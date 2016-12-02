@@ -41,3 +41,13 @@ Cambiamos en la aplicación las conexiones para que apunten al nuevo servidor de
 Paralelamente es necesario instalar las dependencias necesarias post-deploy. 
 En este proyecto se utilizó el gestor de dependencias para front-end 'bower', por lo que desde el fichero [package.json](https://github.com/manuasir/ProyectoIV/blob/master/package.json) en el campo 'scripts' se hubo que asegurar que se realizaba la instalación de las dependencias bower necesarias como AngularJS, Bootstrap y otras librerías.
 Se puede acceder al proyecto en producción [aquí](https://ivwebcrawler.herokuapp.com/).
+
+#### Docker
+
+Se va a aislar la aplicación en un contenedor Docker,por lo que hay que generar un fichero Dockerfile en el que se incluirán las secuencias de comandos necesarias para el despliegue de la aplicación.
+
+A continuación procede generar una imagen de nuestro contenedor mediante el servicio docker-hub, al cual enlazaremos nuestra cuenta de github para que la plataforma pueda sincronizar con los repositorios.
+Desde la seccion 'Create Automated Build' seleccionamos nuestra cuenta de github como origen y escogemos el repositorio que nos interesa desplegar
+![](fotoaqui)
+
+
