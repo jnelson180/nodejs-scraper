@@ -56,17 +56,13 @@ Los parámetros mediante los cuales se construirá la imagen estarán determinad
 FROM ubuntu:14.04
 MAINTAINER Manuel Jiménez Bernal <manuasir@correo.ugr.es>
 
-#usar mirrors para que sea más rápido. independientemente la localizacón
-RUN echo "deb mirror://mirrors.ubuntu.com/mirrors.txt trusty main restricted universe multiverse" > /etc/apt/sources.list; \
-	echo "deb mirror://mirrors.ubuntu.com/mirrors.txt trusty-updates main restricted universe multiverse" >> /etc/apt/sources.list; \
-	echo "deb mirror://mirrors.ubuntu.com/mirrors.txt trusty-backports main restricted universe multiverse" >> /etc/apt/sources.list; \
-	echo "deb mirror://mirrors.ubuntu.com/mirrors.txt trusty-security main restricted universe multiverse" >> /etc/apt/sources.list
-
 # instalar paquetes
 RUN apt-get update && apt-get install -y curl git build-essential
-
+RUN mkdir -p /usr/src/app
+WORKDIR /usr/src/app/
 RUN curl https://raw.githubusercontent.com/creationix/nvm/v0.32.1/install.sh | bash
-
+RUN git clone https://github.com/manuasir/ProyectoIV.git
+WORKDIR /usr/src/app/ProyectoIV/
 #versión de Node
 ENV NODE_VERSION 4.6.1
 
@@ -74,11 +70,9 @@ ENV NODE_VERSION 4.6.1
 ENV NVM_DIR /root/.nvm
 
 #clonar repositorio
-RUN git clone https://github.com/manuasir/ProyectoIV.git
 
 #instalar la versión de node y seleccionar como predeterminada. también se instalan paquetes globales (-g)
-RUN . ~/.nvm/nvm.sh && nvm install $NODE_VERSION && nvm alias default $NODE_VERSION && npm install -g bower pm2
-
+RUN . ~/.nvm/nvm.sh && nvm install $NODE_VERSION && nvm alias default $NODE_VERSION && npm install -g bower pm2 gulp grunt
 # Añadir script que automatiza el despliegue
 ADD ./deploy.sh /deploy.sh
 
@@ -96,6 +90,8 @@ Se programó un script para automatizar el proceso de instalación de librerías
 
 if [ -z "$APP_MAIN" ]; then APP_MAIN="bin/www"; fi;
 
+echo NodeJS app\'s start en: $APP_MAIN
+
 #comprueba y cambia la hora. necesario si se exporta en IaaS
 if [ -n "$TIME_ZONE" ]
 then
@@ -104,13 +100,10 @@ then
 fi
 
 #instala versión de node,pone permisos pertinentes, instala librerías
-. ~/.nvm/nvm.sh && nvm use default; \
-  npm install -g gulp; \
-  npm install -g grunt; \
-  npm update -g bower pm2; \
-  cd /ProyectoIV && npm update && npm install && bower install --allow-root && grunt && gulp compress; \
-NODE_ENV=production pm2 start $APP_MAIN -i 0
+. ~/.nvm/nvm.sh && nvm use 4.6.1; \
+  npm install && bower install --allow-root && grunt && gulp compress; \
+NODE_ENV=production npm start
 ```
-
+Este script se ejecuta en el momento de arrancar la imagen (docker run), y entre las tareas mencionadas previamente, el script se encarga también de generar los ficheros minificados y las inyecciones de dependencias por gulp y la documentación generada por grunt.
 Èn cuanto se hizo el push a la rama master, se creó una imagen en [docker-hub](https://hub.docker.com/r/manuasir/proyectoiv/) disponible para que pueda desplegarse
 desde cualquier entorno que cuente con docker.
