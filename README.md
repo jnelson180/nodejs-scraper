@@ -48,6 +48,69 @@ Se va a aislar la aplicación en un contenedor Docker,por lo que hay que generar
 
 A continuación procede generar una imagen de nuestro contenedor mediante el servicio docker-hub, al cual enlazaremos nuestra cuenta de github para que la plataforma pueda sincronizar con los repositorios.
 Desde la seccion 'Create Automated Build' seleccionamos nuestra cuenta de github como origen y escogemos el repositorio que nos interesa desplegar
-![](fotoaqui)
+![](http://s1339.photobucket.com/user/manuasir/media/hub1_zpsytocinpn.png.html" target="_blank"><img src="http://i1339.photobucket.com/albums/o717/manuasir/hub1_zpsytocinpn.png" border="0" alt=" photo hub1_zpsytocinpn.png)
 
+Los parámetros mediante los cuales se construirá la imagen estarán determinados por el fichero Dockerfile, desde el cual se deberán instalar los paquetes necesarios para la ejecución
 
+```c
+FROM ubuntu:14.04
+MAINTAINER Manuel Jiménez Bernal <manuasir@correo.ugr.es>
+
+#usar mirrors para que sea más rápido. independientemente la localizacón
+RUN echo "deb mirror://mirrors.ubuntu.com/mirrors.txt trusty main restricted universe multiverse" > /etc/apt/sources.list; \
+	echo "deb mirror://mirrors.ubuntu.com/mirrors.txt trusty-updates main restricted universe multiverse" >> /etc/apt/sources.list; \
+	echo "deb mirror://mirrors.ubuntu.com/mirrors.txt trusty-backports main restricted universe multiverse" >> /etc/apt/sources.list; \
+	echo "deb mirror://mirrors.ubuntu.com/mirrors.txt trusty-security main restricted universe multiverse" >> /etc/apt/sources.list
+
+# instalar paquetes
+RUN apt-get update && apt-get install -y curl git build-essential
+
+RUN curl https://raw.githubusercontent.com/creationix/nvm/v0.32.1/install.sh | bash
+
+#versión de Node
+ENV NODE_VERSION 4.6.1
+
+#necesario para la instalación de NVM
+ENV NVM_DIR /root/.nvm
+
+#clonar repositorio
+RUN git clone https://github.com/manuasir/ProyectoIV.git
+
+#instalar la versión de node y seleccionar como predeterminada. también se instalan paquetes globales (-g)
+RUN . ~/.nvm/nvm.sh && nvm install $NODE_VERSION && nvm alias default $NODE_VERSION && npm install -g bower pm2
+
+# Añadir script que automatiza el despliegue
+ADD ./deploy.sh /deploy.sh
+
+#abre el puerto 3000
+EXPOSE 3000
+
+#arranca el script que lo hace casi todo
+CMD ["/bin/bash", "/deploy.sh"]
+```
+
+Se programó un script para automatizar el proceso de instalación de librerías y dependencias necesarias de Node.JS que se utilizan en el proyecto
+
+```c
+#! /bin/bash
+
+if [ -z "$APP_MAIN" ]; then APP_MAIN="bin/www"; fi;
+
+#comprueba y cambia la hora. necesario si se exporta en IaaS
+if [ -n "$TIME_ZONE" ]
+then
+  echo $TIME_ZONE | sudo tee /etc/timezone;
+  sudo dpkg-reconfigure -f noninteractive tzdata;
+fi
+
+#instala versión de node,pone permisos pertinentes, instala librerías
+. ~/.nvm/nvm.sh && nvm use default; \
+  npm install -g gulp; \
+  npm install -g grunt; \
+  npm update -g bower pm2; \
+  cd /ProyectoIV && npm update && npm install && bower install --allow-root && grunt && gulp compress; \
+NODE_ENV=production pm2 start $APP_MAIN -i 0
+```
+
+Èn cuanto se hizo el push a la rama master, se creó una imagen en [docker-hub](https://hub.docker.com/r/manuasir/proyectoiv/) disponible para que pueda desplegarse
+desde cualquier entorno que cuente con docker.
